@@ -3,4 +3,14 @@ name = "senshi-program"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+crate-type = ["lib", "cdylib"]
+name = "senshi_program"
+
 [dependencies]
+pinocchio.workspace = true
+pinocchio-associated-token-account.workspace = true
+pinocchio-log = "0.5.1"
+pinocchio-pubkey.workspace = true
+pinocchio-system.workspace = true
+pinocchio-token.workspace = true
