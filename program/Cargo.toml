@@ -10,10 +10,12 @@ name = "senshi_program"
 [dependencies]
 pinocchio.workspace = true
 pinocchio-associated-token-account.workspace = true
-pinocchio-log = "0.5.1"
+pinocchio-log.workspace = true
 pinocchio-pubkey.workspace = true
 pinocchio-system.workspace = true
 pinocchio-token.workspace = true
+solana-address.workspace = true
+thiserror.workspace = true
 
 [lints]
 workspace = true
