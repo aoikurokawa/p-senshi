@@ -14,3 +14,6 @@ pinocchio-log = "0.5.1"
 pinocchio-pubkey.workspace = true
 pinocchio-system.workspace = true
 pinocchio-token.workspace = true
+
+[lints]
+workspace = true
