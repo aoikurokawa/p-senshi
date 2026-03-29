@@ -4,6 +4,7 @@ use crate::instruction::{initialize_config::process_initialize_config, SenshiIns
 
 pub mod error;
 pub mod instruction;
+pub mod state;
 
 entrypoint!(process_instruction);
 
