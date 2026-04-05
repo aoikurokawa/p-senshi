@@ -100,10 +100,10 @@ pub fn process_enter_season(
 
     // Parse validators
     let mut validators: [Address; 10] = core::array::from_fn(|_| Address::default());
-    for i in 0..roster_size {
+    for (i, validator) in validators.iter_mut().enumerate().take(roster_size) {
         let start = i * 32;
         let bytes: [u8; 32] = validators_data[start..start + 32].try_into().unwrap();
-        validators[i] = Address::from(bytes);
+        *validator = Address::from(bytes).clone();
     }
 
     // Check for duplicate validators
