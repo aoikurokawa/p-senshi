@@ -62,9 +62,6 @@ pub struct Season {
     /// Number of entries submitted so far.
     pub total_entries: u32,
 
-    /// Maximum number of vote_accounts a participant can select for their roster.
-    pub roster_size: u8,
-
     /// Current lifecycle status (see [`SeasonStatus`]).
     pub status: u8,
 
@@ -76,8 +73,8 @@ pub struct Season {
 }
 
 impl Season {
-    // 8 + 1 + 1 + 8 + 8 + 4 + 32 + 8 + 32 + 1 + 128 = 231
-    pub const LEN: usize = 231;
+    // 32 + 32 + 8 + 8 + 8 + 8 + 4 + 1 + 1 + 128 = 230
+    pub const LEN: usize = 230;
     pub const DISCRIMINATOR: &'static [u8] = &[2, 0, 0, 0, 0, 0, 0, 0];
 
     /// Return a mutable `Season` reference from the given bytes.

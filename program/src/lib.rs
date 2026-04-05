@@ -33,19 +33,11 @@ fn process_instruction(
         }
         SenshiInstruction::InitializeSeason {
             entry_fee,
-            roster_size,
             epoch_start,
             epoch_end,
         } => {
             pinocchio_log::log!("Instruction: InitializeSeason");
-            process_initialize_season(
-                program_id,
-                accounts,
-                entry_fee,
-                roster_size,
-                epoch_start,
-                epoch_end,
-            )
+            process_initialize_season(program_id, accounts, entry_fee, epoch_start, epoch_end)
         }
         SenshiInstruction::EnterSeason { epoch_start } => {
             pinocchio_log::log!("Instruction: EnterSeason");

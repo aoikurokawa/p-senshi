@@ -19,9 +19,6 @@ pub enum SenshiInstruction {
         /// Entry fee
         entry_fee: u64,
 
-        /// Roster size
-        roster_size: u8,
-
         /// Epoch start
         epoch_start: u64,
 
@@ -72,19 +69,17 @@ impl SenshiInstruction {
         Ok(match tag {
             0 => SenshiInstruction::InitializeConfig,
             1 => {
-                // Parse instruction data: entry_fee (8) + roster_size (1) + epoch_start (8) + epoch_end (8) + vault (32) = 57
-                if rest.len() < 57 {
+                // Parse instruction data: entry_fee (8) + epoch_start (8) + epoch_end (8) = 24
+                if rest.len() < 24 {
                     return Err(ProgramError::InvalidInstructionData);
                 }
 
                 let entry_fee = u64::from_le_bytes(rest[0..8].try_into().unwrap());
-                let roster_size = rest[8];
-                let epoch_start = u64::from_le_bytes(rest[9..17].try_into().unwrap());
-                let epoch_end = u64::from_le_bytes(rest[17..25].try_into().unwrap());
+                let epoch_start = u64::from_le_bytes(rest[8..16].try_into().unwrap());
+                let epoch_end = u64::from_le_bytes(rest[16..24].try_into().unwrap());
 
                 SenshiInstruction::InitializeSeason {
                     entry_fee,
-                    roster_size,
                     epoch_start,
                     epoch_end,
                 }

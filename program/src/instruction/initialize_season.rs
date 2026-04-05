@@ -26,15 +26,12 @@ use crate::{
 /// | Offset | Size | Field        |
 /// |--------|------|--------------|
 /// | 0      | 8    | entry_fee    |
-/// | 8      | 1    | roster_size  |
-/// | 9      | 8    | epoch_start  |
-/// | 17     | 8    | epoch_end    |
-/// | 25     | 32   | vault        |
+/// | 8      | 8    | epoch_start  |
+/// | 16     | 8    | epoch_end    |
 pub fn process_initialize_season(
     program_id: &Address,
     accounts: &[AccountView],
     entry_fee: u64,
-    roster_size: u8,
     epoch_start: u64,
     epoch_end: u64,
 ) -> Result<(), ProgramError> {
@@ -91,7 +88,6 @@ pub fn process_initialize_season(
     season.authority = payer_view.address().clone();
     season.vault = vault_view.address().clone();
     season.entry_fee = entry_fee;
-    season.roster_size = roster_size;
     season.status = SeasonStatus::Open as u8;
     season.epoch_start = epoch_start;
     season.epoch_end = epoch_end;
