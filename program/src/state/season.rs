@@ -2,23 +2,85 @@ use pinocchio::{error::ProgramError, Address};
 
 use crate::error::SenshiError;
 
+/// Represents the lifecycle status of a season.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum SeasonStatus {
+    /// Season is accepting new entries.
+    Open = 0,
+
+    /// Entries are locked; no new participants can join.
+    Locked = 1,
+
+    /// Epoch has ended and scores are being calculated.
+    Scoring = 2,
+
+    /// Rewards have been distributed and the season is complete.
+    Settled = 3,
+}
+
+impl TryFrom<u8> for SeasonStatus {
+    type Error = ProgramError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(SeasonStatus::Open),
+            1 => Ok(SeasonStatus::Locked),
+            2 => Ok(SeasonStatus::Scoring),
+            3 => Ok(SeasonStatus::Settled),
+            _ => Err(ProgramError::InvalidAccountData),
+        }
+    }
+}
+
+/// On-chain state for a single fantasy season.
+///
+/// A season defines the epoch range during which participants select validator
+/// rosters and compete for a share of the prize pool. The lifecycle flows
+/// through `Open -> Locked -> Scoring -> Settled`.
 #[derive(Debug)]
+#[repr(C)]
 pub struct Season {
-    /// Account with authority over this PDA.
+    /// Lamports required to submit an entry.
+    pub entry_fee: u64,
+
+    /// Maximum number of validators a participant can select for their roster.
+    pub roster_size: u8,
+
+    /// Current lifecycle status (see [`SeasonStatus`]).
+    pub status: u8,
+
+    /// First epoch (inclusive) of the scoring window.
+    pub epoch_start: u64,
+
+    /// Last epoch (inclusive) of the scoring window.
+    pub epoch_end: u64,
+
+    /// Number of entries submitted so far.
+    pub total_entries: u32,
+
+    /// Token account that holds collected entry fees and prizes.
+    pub vault: Address,
+
+    /// Accumulated prize pool in lamports.
+    pub prize_pool: u64,
+
+    /// Authority that can manage this season (lock, score, settle).
     pub authority: Address,
+
+    /// PDA bump seed.
+    pub bump: u8,
+
+    /// Reserved space for future fields.
+    pub reserved: [u8; 128],
 }
 
 impl Season {
-    pub const LEN: usize = 32;
+    // 8 + 1 + 1 + 8 + 8 + 4 + 32 + 8 + 32 + 1 + 128 = 231
+    pub const LEN: usize = 231;
     pub const DISCRIMINATOR: &'static [u8] = &[2, 0, 0, 0, 0, 0, 0, 0];
 
-    pub fn new(authority: Address) -> Self {
-        Self { authority }
-    }
-
     /// Return a mutable `Season` reference from the given bytes.
-    ///
-    /// This function does not check if the data is initialized.
     ///
     /// # Safety
     ///
@@ -37,21 +99,14 @@ impl Season {
     }
 
     /// Returns the seeds for the PDA
-    pub fn seeds() -> Vec<Vec<u8>> {
-        vec![b"season".to_vec()]
+    pub fn seeds(epoch: u64) -> Vec<Vec<u8>> {
+        vec![b"season".to_vec(), epoch.to_be_bytes().to_vec()]
     }
 
     /// Find the program address for the season account
-    ///
-    /// # Arguments
-    /// * `program_id` - The program ID
-    /// # Returns
-    /// * `Pubkey` - The program address
-    /// * `u8` - The bump seed
-    /// * `Vec<Vec<u8>>` - The seeds used to generate the PDA
     #[inline(always)]
-    pub fn find_program_address(program_id: &Address) -> (Address, u8, Vec<Vec<u8>>) {
-        let seeds = Self::seeds();
+    pub fn find_program_address(program_id: &Address, epoch: u64) -> (Address, u8, Vec<Vec<u8>>) {
+        let seeds = Self::seeds(epoch);
         let seeds_iter: Vec<&[u8]> = seeds.iter().map(|s| s.as_slice()).collect();
         let (pda, bump) = Address::find_program_address(&seeds_iter, program_id);
         (pda, bump, seeds)

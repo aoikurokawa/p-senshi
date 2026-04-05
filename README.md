@@ -225,7 +225,6 @@ pub mod validator_league {
 #[account]
 #[derive(Debug)]
 pub struct Season {
-    pub season_id: u64,
     pub entry_fee: u64,
     pub roster_size: u8,
     pub status: SeasonStatus,

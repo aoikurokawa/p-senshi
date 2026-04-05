@@ -31,7 +31,7 @@ fn process_instruction(
         }
         SenshiInstruction::InitializeSeason => {
             pinocchio_log::log!("Instruction: InitializeSeason");
-            process_initialize_season(program_id, accounts)
+            process_initialize_season(program_id, accounts, &instruction_data[1..])
         }
     }
 }
