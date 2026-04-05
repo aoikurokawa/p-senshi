@@ -15,24 +15,6 @@ pub mod validator_league {
 
 
 
-    /// Keeper locks the season when the target epoch begins
-    pub fn lock_season(ctx: Context<KeeperAction>, _season_id: u64) -> Result<()> {
-        let season = &mut ctx.accounts.season;
-        require!(season.status == SeasonStatus::Open, VLError::InvalidTransition);
-
-        let clock = Clock::get()?;
-        require!(clock.epoch >= season.epoch_start, VLError::EpochNotReached);
-
-        season.status = SeasonStatus::Locked;
-
-        emit!(SeasonLocked {
-            season_id: season.season_id,
-            epoch: clock.epoch,
-            total_entries: season.total_entries,
-        });
-
-        Ok(())
-    }
 
     /// Keeper submits scores for a batch of entries
     pub fn submit_scores(

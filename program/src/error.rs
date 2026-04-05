@@ -14,6 +14,12 @@ pub enum SenshiError {
 
     #[error("Duplicate validator in roster.")]
     DuplicateValidator,
+
+    #[error("Invalid season status transition.")]
+    InvalidTransition,
+
+    #[error("Target epoch has not been reached yet.")]
+    EpochNotReached,
 }
 
 impl From<SenshiError> for ProgramError {
