@@ -4,6 +4,7 @@ pub mod enter_season;
 pub mod initialize_config;
 pub mod initialize_season;
 pub mod lock_season;
+pub mod submit_scores;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[repr(C)]
@@ -19,6 +20,9 @@ pub enum SenshiInstruction {
 
     /// Lock a season
     LockSeason,
+
+    /// Submit scores for entries
+    SubmitScores,
 }
 
 impl SenshiInstruction {
@@ -32,6 +36,7 @@ impl SenshiInstruction {
             1 => SenshiInstruction::InitializeSeason,
             2 => SenshiInstruction::EnterSeason,
             3 => SenshiInstruction::LockSeason,
+            4 => SenshiInstruction::SubmitScores,
             _ => return Err(ProgramError::InvalidInstructionData),
         })
     }

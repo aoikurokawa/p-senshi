@@ -20,6 +20,9 @@ pub enum SenshiError {
 
     #[error("Target epoch has not been reached yet.")]
     EpochNotReached,
+
+    #[error("Entries and scores length mismatch.")]
+    LengthMismatch,
 }
 
 impl From<SenshiError> for ProgramError {
