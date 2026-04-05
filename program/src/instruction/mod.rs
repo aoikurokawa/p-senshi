@@ -3,6 +3,7 @@ use pinocchio::error::ProgramError;
 pub mod enter_season;
 pub mod initialize_config;
 pub mod initialize_season;
+pub mod lock_season;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[repr(C)]
@@ -15,6 +16,9 @@ pub enum SenshiInstruction {
 
     /// Enter a season
     EnterSeason,
+
+    /// Lock a season
+    LockSeason,
 }
 
 impl SenshiInstruction {
@@ -27,6 +31,7 @@ impl SenshiInstruction {
             0 => SenshiInstruction::InitializeConfig,
             1 => SenshiInstruction::InitializeSeason,
             2 => SenshiInstruction::EnterSeason,
+            3 => SenshiInstruction::LockSeason,
             _ => return Err(ProgramError::InvalidInstructionData),
         })
     }
