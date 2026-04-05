@@ -18,7 +18,7 @@ use crate::{
 ///
 /// 0. `[writable]` Season PDA.
 /// 1. `[signer]` Authority.
-/// 2..N. `[writable]` Entry PDAs (one per score).
+/// 2. .N. `[writable]` Entry PDAs (one per score).
 ///
 /// # Instruction Data (after tag byte)
 ///
