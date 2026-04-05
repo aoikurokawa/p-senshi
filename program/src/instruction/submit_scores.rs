@@ -84,9 +84,7 @@ pub fn process_submit_scores(
     }
 
     // Season must be Locked or Scoring
-    if season.status != SeasonStatus::Locked as u8
-        && season.status != SeasonStatus::Scoring as u8
-    {
+    if season.status != SeasonStatus::Locked as u8 && season.status != SeasonStatus::Scoring as u8 {
         pinocchio_log::log!("Season is not in Locked or Scoring status");
         return Err(SenshiError::InvalidTransition.into());
     }
