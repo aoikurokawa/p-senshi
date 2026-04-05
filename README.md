@@ -14,61 +14,6 @@ pub mod validator_league {
     use super::*;
 
 
-    /// Player enters a season with their validator roster
-    pub fn enter_season(
-        ctx: Context<EnterSeason>,
-        season_id: u64,
-        validators: Vec<Pubkey>,
-    ) -> Result<()> {
-        let season = &mut ctx.accounts.season;
-
-        require!(season.status == SeasonStatus::Open, VLError::SeasonNotOpen);
-        require!(
-            validators.len() == season.roster_size as usize,
-            VLError::InvalidRosterSize
-        );
-
-        // Check no duplicate validators
-        let mut sorted = validators.clone();
-        sorted.sort();
-        for i in 1..sorted.len() {
-            require!(sorted[i] != sorted[i - 1], VLError::DuplicateValidator);
-        }
-
-        // Transfer JitoSOL entry fee to vault
-        token::transfer(
-            CpiContext::new(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.player_jitosol.to_account_info(),
-                    to: ctx.accounts.vault.to_account_info(),
-                    authority: ctx.accounts.player.to_account_info(),
-                },
-            ),
-            season.entry_fee,
-        )?;
-
-        // Initialize entry
-        let entry = &mut ctx.accounts.entry;
-        entry.season_id = season_id;
-        entry.player = ctx.accounts.player.key();
-        entry.validators = pad_validators(validators, season.roster_size);
-        entry.score = None;
-        entry.reward = None;
-        entry.claimed = false;
-        entry.bump = ctx.bumps.entry;
-
-        season.total_entries += 1;
-        season.prize_pool += season.entry_fee;
-
-        emit!(EntrySubmitted {
-            season_id,
-            player: ctx.accounts.player.key(),
-            validators: entry.validators.to_vec(),
-        });
-
-        Ok(())
-    }
 
     /// Keeper locks the season when the target epoch begins
     pub fn lock_season(ctx: Context<KeeperAction>, _season_id: u64) -> Result<()> {
@@ -185,22 +130,6 @@ pub mod validator_league {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Account Structs
-// ---------------------------------------------------------------------------
-
-
-#[account]
-#[derive(Debug)]
-pub struct Entry {
-    pub season_id: u64,
-    pub player: Pubkey,
-    pub validators: [Pubkey; 10], // max roster size, unused slots = Pubkey::default()
-    pub score: Option<u64>,
-    pub reward: Option<u64>,
-    pub claimed: bool,
-    pub bump: u8,
-}
 
 
 // ---------------------------------------------------------------------------
@@ -208,46 +137,6 @@ pub struct Entry {
 // ---------------------------------------------------------------------------
 
 
-#[derive(Accounts)]
-#[instruction(season_id: u64)]
-pub struct EnterSeason<'info> {
-    #[account(
-        mut,
-        seeds = [b"season", season_id.to_le_bytes().as_ref()],
-        bump = season.bump,
-    )]
-    pub season: Account<'info, Season>,
-
-    #[account(
-        init,
-        payer = player,
-        space = 8 + std::mem::size_of::<Entry>(),
-        seeds = [b"entry", season_id.to_le_bytes().as_ref(), player.key().as_ref()],
-        bump,
-    )]
-    pub entry: Account<'info, Entry>,
-
-    #[account(
-        mut,
-        constraint = vault.key() == season.vault,
-    )]
-    pub vault: Account<'info, TokenAccount>,
-
-    #[account(
-        mut,
-        constraint = player_jitosol.owner == player.key(),
-        constraint = player_jitosol.mint == jitosol_mint.key(),
-    )]
-    pub player_jitosol: Account<'info, TokenAccount>,
-
-    pub jitosol_mint: Account<'info, token::Mint>,
-
-    #[account(mut)]
-    pub player: Signer<'info>,
-
-    pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
-}
 
 #[derive(Accounts)]
 #[instruction(season_id: u64)]

@@ -1,8 +1,8 @@
 use pinocchio::{entrypoint, AccountView, Address, ProgramResult};
 
 use crate::instruction::{
-    initialize_config::process_initialize_config, initialize_season::process_initialize_season,
-    SenshiInstruction,
+    enter_season::process_enter_season, initialize_config::process_initialize_config,
+    initialize_season::process_initialize_season, SenshiInstruction,
 };
 
 pub mod error;
@@ -32,6 +32,10 @@ fn process_instruction(
         SenshiInstruction::InitializeSeason => {
             pinocchio_log::log!("Instruction: InitializeSeason");
             process_initialize_season(program_id, accounts, &instruction_data[1..])
+        }
+        SenshiInstruction::EnterSeason => {
+            pinocchio_log::log!("Instruction: EnterSeason");
+            process_enter_season(program_id, accounts, &instruction_data[1..])
         }
     }
 }
