@@ -1,4 +1,4 @@
-use pinocchio::{entrypoint, AccountView, Address, ProgramResult};
+use pinocchio::{entrypoint, error::ProgramError, AccountView, Address, ProgramResult};
 
 use crate::instruction::{
     claim_reward::process_claim_reward, enter_season::process_enter_season,
@@ -20,9 +20,9 @@ fn process_instruction(
     accounts: &[AccountView],
     instruction_data: &[u8],
 ) -> ProgramResult {
-    // if *program_id != id() {
-    //     return Err(ProgramError::IncorrectProgramId);
-    // }
+    if program_id.ne(&Address::new_from_array(id())) {
+        return Err(ProgramError::IncorrectProgramId);
+    }
 
     let instruction = SenshiInstruction::unpack(instruction_data)?;
 
