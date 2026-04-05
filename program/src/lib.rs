@@ -3,7 +3,7 @@ use pinocchio::{entrypoint, AccountView, Address, ProgramResult};
 use crate::instruction::{
     enter_season::process_enter_season, initialize_config::process_initialize_config,
     initialize_season::process_initialize_season, lock_season::process_lock_season,
-    SenshiInstruction,
+    submit_scores::process_submit_scores, SenshiInstruction,
 };
 
 pub mod error;
@@ -41,6 +41,10 @@ fn process_instruction(
         SenshiInstruction::LockSeason => {
             pinocchio_log::log!("Instruction: LockSeason");
             process_lock_season(program_id, accounts, &instruction_data[1..])
+        }
+        SenshiInstruction::SubmitScores => {
+            pinocchio_log::log!("Instruction: SubmitScores");
+            process_submit_scores(program_id, accounts, &instruction_data[1..])
         }
     }
 }

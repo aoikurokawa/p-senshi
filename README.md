@@ -13,35 +13,6 @@ declare_id!("VLEAGUExxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 pub mod validator_league {
     use super::*;
 
-
-
-
-    /// Keeper submits scores for a batch of entries
-    pub fn submit_scores(
-        ctx: Context<SubmitScores>,
-        _season_id: u64,
-        entries: Vec<Pubkey>,
-        scores: Vec<u64>,
-    ) -> Result<()> {
-        let season = &ctx.accounts.season;
-        require!(
-            season.status == SeasonStatus::Locked || season.status == SeasonStatus::Scoring,
-            VLError::InvalidTransition
-        );
-        require!(entries.len() == scores.len(), VLError::LengthMismatch);
-
-        // Note: In practice, remaining_accounts would contain the entry PDAs
-        // and we'd iterate + set scores. Simplified here for sketch purposes.
-        // The keeper would call this in batches of ~20 entries per tx.
-
-        emit!(ScoresSubmitted {
-            season_id: season.season_id,
-            count: entries.len() as u32,
-        });
-
-        Ok(())
-    }
-
     /// Keeper settles the season — computes reward tiers and enables claims
     pub fn settle_season(
         ctx: Context<KeeperAction>,
@@ -140,20 +111,6 @@ pub struct KeeperAction<'info> {
     pub authority: Signer<'info>,
 }
 
-#[derive(Accounts)]
-#[instruction(season_id: u64)]
-pub struct SubmitScores<'info> {
-    #[account(
-        mut,
-        seeds = [b"season", season_id.to_le_bytes().as_ref()],
-        bump = season.bump,
-        has_one = authority,
-    )]
-    pub season: Account<'info, Season>,
-
-    pub authority: Signer<'info>,
-    // remaining_accounts: Entry PDAs to score
-}
 
 #[derive(Accounts)]
 #[instruction(season_id: u64)]
