@@ -47,10 +47,7 @@ fn process_instruction(
             pinocchio_log::log!("Instruction: LockSeason");
             process_lock_season(program_id, accounts, epoch_start)
         }
-        SenshiInstruction::SubmitScores {
-            epoch_start,
-            score,
-        } => {
+        SenshiInstruction::SubmitScores { epoch_start, score } => {
             pinocchio_log::log!("Instruction: SubmitScores");
             process_submit_scores(program_id, accounts, epoch_start, score)
         }
