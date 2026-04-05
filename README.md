@@ -13,33 +13,6 @@ declare_id!("VLEAGUExxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 pub mod validator_league {
     use super::*;
 
-    /// Keeper settles the season — computes reward tiers and enables claims
-    pub fn settle_season(
-        ctx: Context<KeeperAction>,
-        _season_id: u64,
-    ) -> Result<()> {
-        let season = &mut ctx.accounts.season;
-        require!(
-            season.status == SeasonStatus::Scoring,
-            VLError::InvalidTransition
-        );
-
-        let clock = Clock::get()?;
-        require!(clock.epoch > season.epoch_end, VLError::EpochNotEnded);
-
-        // Prize pool = vault balance (includes accrued JitoSOL yield)
-        season.prize_pool = ctx.accounts.vault.amount;
-        season.status = SeasonStatus::Settled;
-
-        emit!(SeasonSettled {
-            season_id: season.season_id,
-            prize_pool: season.prize_pool,
-            total_entries: season.total_entries,
-        });
-
-        Ok(())
-    }
-
     /// Player claims their reward after settlement
     pub fn claim_reward(ctx: Context<ClaimReward>, season_id: u64) -> Result<()> {
         let entry = &mut ctx.accounts.entry;
