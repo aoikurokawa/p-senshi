@@ -26,6 +26,15 @@ pub enum SenshiError {
 
     #[error("Season epoch has not ended yet.")]
     EpochNotEnded,
+
+    #[error("Season is not settled.")]
+    NotSettled,
+
+    #[error("Reward has already been claimed.")]
+    AlreadyClaimed,
+
+    #[error("No reward assigned to this entry.")]
+    NoReward,
 }
 
 impl From<SenshiError> for ProgramError {

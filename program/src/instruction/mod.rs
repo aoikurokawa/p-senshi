@@ -1,5 +1,6 @@
 use pinocchio::error::ProgramError;
 
+pub mod claim_reward;
 pub mod enter_season;
 pub mod initialize_config;
 pub mod initialize_season;
@@ -27,6 +28,9 @@ pub enum SenshiInstruction {
 
     /// Settle a season
     SettleSeason,
+
+    /// Claim reward
+    ClaimReward,
 }
 
 impl SenshiInstruction {
@@ -42,6 +46,7 @@ impl SenshiInstruction {
             3 => SenshiInstruction::LockSeason,
             4 => SenshiInstruction::SubmitScores,
             5 => SenshiInstruction::SettleSeason,
+            6 => SenshiInstruction::ClaimReward,
             _ => return Err(ProgramError::InvalidInstructionData),
         })
     }
