@@ -18,7 +18,8 @@ use crate::{
 ///
 /// 0. `[writable]` Season PDA.
 /// 1. `[signer]` Authority.
-/// 2. `[]` Vault token account.
+/// 2. `[]` Vote account.
+/// 3. `[]` Vault token account.
 ///
 /// # Instruction Data (after tag byte)
 ///
@@ -28,9 +29,9 @@ use crate::{
 pub fn process_settle_season(
     program_id: &Address,
     accounts: &[AccountView],
-    data: &[u8],
+    epoch_start: u64,
 ) -> Result<(), ProgramError> {
-    let [season_view, authority_view, vault_view] = accounts else {
+    let [season_view, authority_view, vote_account_view, vault_view] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
@@ -39,14 +40,9 @@ pub fn process_settle_season(
         return Err(ProgramError::MissingRequiredSignature);
     }
 
-    // Parse epoch_start from instruction data
-    if data.len() < 8 {
-        return Err(ProgramError::InvalidInstructionData);
-    }
-    let epoch_start = u64::from_le_bytes(data[0..8].try_into().unwrap());
-
     // Verify season PDA
-    let (season_pubkey, _, _) = Season::find_program_address(program_id, epoch_start);
+    let (season_pubkey, _, _) =
+        Season::find_program_address(program_id, vote_account_view.address(), epoch_start);
     if season_pubkey.ne(season_view.address()) {
         pinocchio_log::log!("Season account is not at the correct PDA");
         return Err(ProgramError::InvalidAccountData);

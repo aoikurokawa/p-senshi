@@ -35,20 +35,17 @@ impl TryFrom<u8> for SeasonStatus {
 
 /// On-chain state for a single fantasy season.
 ///
-/// A season defines the epoch range during which participants select validator
+/// A season defines the epoch range during which participants select vote_account
 /// rosters and compete for a share of the prize pool. The lifecycle flows
 /// through `Open -> Locked -> Scoring -> Settled`.
 #[derive(Debug)]
 #[repr(C)]
 pub struct Season {
-    /// Lamports required to submit an entry.
-    pub entry_fee: u64,
+    /// Authority that can manage this season (lock, score, settle).
+    pub authority: Address,
 
-    /// Maximum number of validators a participant can select for their roster.
-    pub roster_size: u8,
-
-    /// Current lifecycle status (see [`SeasonStatus`]).
-    pub status: u8,
+    /// Token account that holds collected entry fees and prizes.
+    pub vault: Address,
 
     /// First epoch (inclusive) of the scoring window.
     pub epoch_start: u64,
@@ -56,17 +53,20 @@ pub struct Season {
     /// Last epoch (inclusive) of the scoring window.
     pub epoch_end: u64,
 
-    /// Number of entries submitted so far.
-    pub total_entries: u32,
-
-    /// Token account that holds collected entry fees and prizes.
-    pub vault: Address,
-
     /// Accumulated prize pool in lamports.
     pub prize_pool: u64,
 
-    /// Authority that can manage this season (lock, score, settle).
-    pub authority: Address,
+    /// Lamports required to submit an entry.
+    pub entry_fee: u64,
+
+    /// Number of entries submitted so far.
+    pub total_entries: u32,
+
+    /// Maximum number of vote_accounts a participant can select for their roster.
+    pub roster_size: u8,
+
+    /// Current lifecycle status (see [`SeasonStatus`]).
+    pub status: u8,
 
     /// PDA bump seed.
     pub bump: u8,
@@ -98,15 +98,23 @@ impl Season {
         Ok(&mut *(bytes.as_mut_ptr() as *mut Self))
     }
 
-    /// Returns the seeds for the PDA
-    pub fn seeds(epoch: u64) -> Vec<Vec<u8>> {
-        vec![b"season".to_vec(), epoch.to_be_bytes().to_vec()]
+    /// Returns the seeds for the PDA: `["season", vote_account, epoch]`
+    pub fn seeds(vote_account: &Address, epoch: u64) -> Vec<Vec<u8>> {
+        vec![
+            b"season".to_vec(),
+            vote_account.as_ref().to_vec(),
+            epoch.to_be_bytes().to_vec(),
+        ]
     }
 
-    /// Find the program address for the season account
+    /// Find the program address for the season account (per vote_account + epoch)
     #[inline(always)]
-    pub fn find_program_address(program_id: &Address, epoch: u64) -> (Address, u8, Vec<Vec<u8>>) {
-        let seeds = Self::seeds(epoch);
+    pub fn find_program_address(
+        program_id: &Address,
+        vote_account: &Address,
+        epoch: u64,
+    ) -> (Address, u8, Vec<Vec<u8>>) {
+        let seeds = Self::seeds(vote_account, epoch);
         let seeds_iter: Vec<&[u8]> = seeds.iter().map(|s| s.as_slice()).collect();
         let (pda, bump) = Address::find_program_address(&seeds_iter, program_id);
         (pda, bump, seeds)

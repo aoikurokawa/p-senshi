@@ -31,29 +31,44 @@ fn process_instruction(
             pinocchio_log::log!("Instruction: InitializeConfig");
             process_initialize_config(program_id, accounts)
         }
-        SenshiInstruction::InitializeSeason => {
+        SenshiInstruction::InitializeSeason {
+            entry_fee,
+            roster_size,
+            epoch_start,
+            epoch_end,
+        } => {
             pinocchio_log::log!("Instruction: InitializeSeason");
-            process_initialize_season(program_id, accounts, &instruction_data[1..])
+            process_initialize_season(
+                program_id,
+                accounts,
+                entry_fee,
+                roster_size,
+                epoch_start,
+                epoch_end,
+            )
         }
-        SenshiInstruction::EnterSeason => {
+        SenshiInstruction::EnterSeason { epoch_start } => {
             pinocchio_log::log!("Instruction: EnterSeason");
-            process_enter_season(program_id, accounts, &instruction_data[1..])
+            process_enter_season(program_id, accounts, epoch_start)
         }
-        SenshiInstruction::LockSeason => {
+        SenshiInstruction::LockSeason { epoch_start } => {
             pinocchio_log::log!("Instruction: LockSeason");
-            process_lock_season(program_id, accounts, &instruction_data[1..])
+            process_lock_season(program_id, accounts, epoch_start)
         }
-        SenshiInstruction::SubmitScores => {
+        SenshiInstruction::SubmitScores {
+            epoch_start,
+            score,
+        } => {
             pinocchio_log::log!("Instruction: SubmitScores");
-            process_submit_scores(program_id, accounts, &instruction_data[1..])
+            process_submit_scores(program_id, accounts, epoch_start, score)
         }
-        SenshiInstruction::SettleSeason => {
+        SenshiInstruction::SettleSeason { epoch_start } => {
             pinocchio_log::log!("Instruction: SettleSeason");
-            process_settle_season(program_id, accounts, &instruction_data[1..])
+            process_settle_season(program_id, accounts, epoch_start)
         }
-        SenshiInstruction::ClaimReward => {
+        SenshiInstruction::ClaimReward { epoch_start } => {
             pinocchio_log::log!("Instruction: ClaimReward");
-            process_claim_reward(program_id, accounts, &instruction_data[1..])
+            process_claim_reward(program_id, accounts, epoch_start)
         }
     }
 }
