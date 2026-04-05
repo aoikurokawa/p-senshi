@@ -1,8 +1,8 @@
 use pinocchio::{entrypoint, AccountView, Address, ProgramResult};
 
 use crate::instruction::{
-    initialize_config::process_initialize_config,
-    initialize_season::process_initialize_season, SenshiInstruction,
+    initialize_config::process_initialize_config, initialize_season::process_initialize_season,
+    SenshiInstruction,
 };
 
 pub mod error;
