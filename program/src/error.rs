@@ -23,6 +23,9 @@ pub enum SenshiError {
 
     #[error("Entries and scores length mismatch.")]
     LengthMismatch,
+
+    #[error("Season epoch has not ended yet.")]
+    EpochNotEnded,
 }
 
 impl From<SenshiError> for ProgramError {
