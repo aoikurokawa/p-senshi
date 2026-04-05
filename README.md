@@ -130,41 +130,6 @@ pub struct ClaimReward<'info> {
 // ---------------------------------------------------------------------------
 
 #[event]
-pub struct SeasonCreated {
-    pub season_id: u64,
-    pub entry_fee: u64,
-    pub roster_size: u8,
-    pub target_epoch: u64,
-}
-
-#[event]
-pub struct EntrySubmitted {
-    pub season_id: u64,
-    pub player: Pubkey,
-    pub validators: Vec<Pubkey>,
-}
-
-#[event]
-pub struct SeasonLocked {
-    pub season_id: u64,
-    pub epoch: u64,
-    pub total_entries: u32,
-}
-
-#[event]
-pub struct ScoresSubmitted {
-    pub season_id: u64,
-    pub count: u32,
-}
-
-#[event]
-pub struct SeasonSettled {
-    pub season_id: u64,
-    pub prize_pool: u64,
-    pub total_entries: u32,
-}
-
-#[event]
 pub struct RewardClaimed {
     pub season_id: u64,
     pub player: Pubkey,
