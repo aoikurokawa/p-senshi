@@ -3,8 +3,7 @@ use pinocchio::{entrypoint, AccountView, Address, ProgramResult};
 use crate::instruction::{
     enter_season::process_enter_season, initialize_config::process_initialize_config,
     initialize_season::process_initialize_season, lock_season::process_lock_season,
-    settle_season::process_settle_season, submit_scores::process_submit_scores,
-    SenshiInstruction,
+    settle_season::process_settle_season, submit_scores::process_submit_scores, SenshiInstruction,
 };
 
 pub mod error;
