@@ -13,39 +13,6 @@ declare_id!("VLEAGUExxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 pub mod validator_league {
     use super::*;
 
-    /// Initialize a new competition season
-    pub fn create_season(
-        ctx: Context<CreateSeason>,
-        season_id: u64,
-        entry_fee: u64,
-        roster_size: u8,
-        target_epoch: u64,
-    ) -> Result<()> {
-        require!(roster_size > 0 && roster_size <= 10, VLError::InvalidRosterSize);
-        require!(entry_fee > 0, VLError::InvalidEntryFee);
-
-        let season = &mut ctx.accounts.season;
-        season.season_id = season_id;
-        season.entry_fee = entry_fee;
-        season.roster_size = roster_size;
-        season.status = SeasonStatus::Open;
-        season.epoch_start = target_epoch;
-        season.epoch_end = target_epoch; // single-epoch for POC
-        season.total_entries = 0;
-        season.vault = ctx.accounts.vault.key();
-        season.prize_pool = 0;
-        season.authority = ctx.accounts.authority.key();
-        season.bump = ctx.bumps.season;
-
-        emit!(SeasonCreated {
-            season_id,
-            entry_fee,
-            roster_size,
-            target_epoch,
-        });
-
-        Ok(())
-    }
 
     /// Player enters a season with their validator roster
     pub fn enter_season(
@@ -222,20 +189,6 @@ pub mod validator_league {
 // Account Structs
 // ---------------------------------------------------------------------------
 
-#[account]
-#[derive(Debug)]
-pub struct Season {
-    pub entry_fee: u64,
-    pub roster_size: u8,
-    pub status: SeasonStatus,
-    pub epoch_start: u64,
-    pub epoch_end: u64,
-    pub total_entries: u32,
-    pub vault: Pubkey,
-    pub prize_pool: u64,
-    pub authority: Pubkey,
-    pub bump: u8,
-}
 
 #[account]
 #[derive(Debug)]
@@ -249,53 +202,11 @@ pub struct Entry {
     pub bump: u8,
 }
 
-// ---------------------------------------------------------------------------
-// Enums
-// ---------------------------------------------------------------------------
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SeasonStatus {
-    Open,
-    Locked,
-    Scoring,
-    Settled,
-}
 
 // ---------------------------------------------------------------------------
 // Contexts
 // ---------------------------------------------------------------------------
 
-#[derive(Accounts)]
-#[instruction(season_id: u64)]
-pub struct CreateSeason<'info> {
-    #[account(
-        init,
-        payer = authority,
-        space = 8 + std::mem::size_of::<Season>(),
-        seeds = [b"season", season_id.to_le_bytes().as_ref()],
-        bump,
-    )]
-    pub season: Account<'info, Season>,
-
-    #[account(
-        init,
-        payer = authority,
-        token::mint = jitosol_mint,
-        token::authority = vault, // self-authority for PDA
-        seeds = [b"vault", season_id.to_le_bytes().as_ref()],
-        bump,
-    )]
-    pub vault: Account<'info, TokenAccount>,
-
-    pub jitosol_mint: Account<'info, token::Mint>,
-
-    #[account(mut)]
-    pub authority: Signer<'info>,
-
-    pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
-    pub rent: Sysvar<'info, Rent>,
-}
 
 #[derive(Accounts)]
 #[instruction(season_id: u64)]
