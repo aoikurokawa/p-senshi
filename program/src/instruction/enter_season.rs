@@ -15,7 +15,7 @@ use crate::{
     },
 };
 
-/// Enters a player into an open season with the given validator roster.
+/// Enters a player into an open per-validator season.
 ///
 /// Creates the [`Entry`] PDA, transfers the entry fee from the player's token
 /// account to the season vault, and increments the season's `total_entries`
@@ -24,25 +24,25 @@ use crate::{
 /// # Accounts
 ///
 /// 0. `[writable]` Season PDA.
-/// 1. `[writable]` Entry PDA (derived from `["entry", epoch_start, player]`).
+/// 1. `[writable]` Entry PDA (derived from `["entry", season, player]`).
 /// 2. `[signer, writable]` Player.
-/// 3. `[writable]` Player's JitoSOL token account.
-/// 4. `[writable]` Season vault token account.
-/// 5. `[]` Token program.
-/// 6. `[]` System program.
+/// 3. `[]` Vote account.
+/// 4. `[writable]` Player's JitoSOL token account.
+/// 5. `[writable]` Season vault token account.
+/// 6. `[]` Token program.
+/// 7. `[]` System program.
 ///
 /// # Instruction Data (after tag byte)
 ///
-/// | Offset | Size     | Field       |
-/// |--------|----------|-------------|
-/// | 0      | 8        | epoch_start |
-/// | 8      | N * 32   | validators  |
+/// | Offset | Size | Field       |
+/// |--------|------|-------------|
+/// | 0      | 8    | epoch_start |
 pub fn process_enter_season(
     program_id: &Address,
     accounts: &[AccountView],
-    data: &[u8],
+    epoch_start: u64,
 ) -> Result<(), ProgramError> {
-    let [season_view, entry_view, player_view, player_token_view, vault_view, token_program_view, system_program_view] =
+    let [season_view, entry_view, player_view, vote_account_view, player_token_view, vault_view, token_program_view, system_program_view] =
         accounts
     else {
         return Err(ProgramError::NotEnoughAccountKeys);
@@ -63,13 +63,6 @@ pub fn process_enter_season(
         return Err(ProgramError::IncorrectProgramId);
     }
 
-    // Parse instruction data
-    if data.len() < 8 {
-        return Err(ProgramError::InvalidInstructionData);
-    }
-    let epoch_start = u64::from_le_bytes(data[0..8].try_into().unwrap());
-    let validators_data = &data[8..];
-
     // Load season
     let season_data = unsafe { season_view.borrow_unchecked_mut() };
     if season_data[0..8] != *Season::DISCRIMINATOR {
@@ -79,7 +72,8 @@ pub fn process_enter_season(
     let season = unsafe { Season::load_mut_unchecked(&mut season_data[8..])? };
 
     // Verify season PDA
-    let (season_pubkey, _, _) = Season::find_program_address(program_id, epoch_start);
+    let (season_pubkey, _, _) =
+        Season::find_program_address(program_id, vote_account_view.address(), epoch_start);
     if season_pubkey.ne(season_view.address()) {
         pinocchio_log::log!("Season account is not at the correct PDA");
         return Err(ProgramError::InvalidAccountData);
@@ -89,31 +83,6 @@ pub fn process_enter_season(
     if season.status != SeasonStatus::Open as u8 {
         pinocchio_log::log!("Season is not open");
         return Err(SenshiError::SeasonNotOpen.into());
-    }
-
-    // Validate roster size
-    let roster_size = season.roster_size as usize;
-    if validators_data.len() != roster_size * 32 {
-        pinocchio_log::log!("Invalid roster size");
-        return Err(SenshiError::InvalidRosterSize.into());
-    }
-
-    // Parse validators
-    let mut validators: [Address; 10] = core::array::from_fn(|_| Address::default());
-    for (i, validator) in validators.iter_mut().enumerate().take(roster_size) {
-        let start = i * 32;
-        let bytes: [u8; 32] = validators_data[start..start + 32].try_into().unwrap();
-        *validator = Address::from(bytes).clone();
-    }
-
-    // Check for duplicate validators
-    for i in 0..roster_size {
-        for j in (i + 1)..roster_size {
-            if validators[i] == validators[j] {
-                pinocchio_log::log!("Duplicate validator in roster");
-                return Err(SenshiError::DuplicateValidator.into());
-            }
-        }
     }
 
     // Verify vault matches season
@@ -133,7 +102,7 @@ pub fn process_enter_season(
 
     // Create Entry PDA
     let (entry_pubkey, entry_bump, mut entry_seeds) =
-        Entry::find_program_address(program_id, epoch_start, player_view.address());
+        Entry::find_program_address(program_id, season_view.address(), player_view.address());
     entry_seeds.push(vec![entry_bump]);
     if entry_pubkey.ne(entry_view.address()) {
         pinocchio_log::log!("Entry account is not at the correct PDA");
@@ -168,9 +137,7 @@ pub fn process_enter_season(
         Entry::load_mut_unchecked(&mut entry_data[8..])?
     };
 
-    entry.season_id = epoch_start;
     entry.player = player_view.address().clone();
-    entry.validators = validators;
     entry.has_score = 0;
     entry.score = 0;
     entry.has_reward = 0;

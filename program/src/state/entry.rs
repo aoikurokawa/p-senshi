@@ -4,19 +4,13 @@ use crate::error::SenshiError;
 
 /// On-chain state for a player's entry in a season.
 ///
-/// Each entry represents a participant's validator roster for a given season.
-/// The PDA is derived from `["entry", epoch_start, player]`.
+/// Each entry represents a participant's stake in a per-validator season.
+/// The PDA is derived from `["entry", season_pda, player]`.
 #[derive(Debug)]
 #[repr(C)]
 pub struct Entry {
-    /// The epoch_start that identifies which season this entry belongs to.
-    pub season_id: u64,
-
     /// The player who submitted this entry.
     pub player: Address,
-
-    /// Selected validator roster (max 10 slots, unused slots are zeroed).
-    pub validators: [Address; 10],
 
     /// Whether the score has been set (0 = no, 1 = yes).
     pub has_score: u8,
@@ -41,8 +35,8 @@ pub struct Entry {
 }
 
 impl Entry {
-    // 8 + 32 + (32 * 10) + 1 + 8 + 1 + 8 + 1 + 1 + 64 = 444
-    pub const LEN: usize = 444;
+    // 32 + 1 + 8 + 1 + 8 + 1 + 1 + 64 = 116
+    pub const LEN: usize = 116;
     pub const DISCRIMINATOR: &'static [u8] = &[3, 0, 0, 0, 0, 0, 0, 0];
 
     /// Return a mutable `Entry` reference from the given bytes.
@@ -64,10 +58,10 @@ impl Entry {
     }
 
     /// Returns the seeds for the PDA
-    pub fn seeds(epoch_start: u64, player: &Address) -> Vec<Vec<u8>> {
+    pub fn seeds(season_pda: &Address, player: &Address) -> Vec<Vec<u8>> {
         vec![
             b"entry".to_vec(),
-            epoch_start.to_be_bytes().to_vec(),
+            season_pda.as_ref().to_vec(),
             player.as_ref().to_vec(),
         ]
     }
@@ -76,10 +70,10 @@ impl Entry {
     #[inline(always)]
     pub fn find_program_address(
         program_id: &Address,
-        epoch_start: u64,
+        season_pda: &Address,
         player: &Address,
     ) -> (Address, u8, Vec<Vec<u8>>) {
-        let seeds = Self::seeds(epoch_start, player);
+        let seeds = Self::seeds(season_pda, player);
         let seeds_iter: Vec<&[u8]> = seeds.iter().map(|s| s.as_slice()).collect();
         let (pda, bump) = Address::find_program_address(&seeds_iter, program_id);
         (pda, bump, seeds)

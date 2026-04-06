@@ -15,38 +15,120 @@ pub enum SenshiInstruction {
     InitializeConfig,
 
     /// Initialize season
-    InitializeSeason,
+    InitializeSeason {
+        /// Entry fee
+        entry_fee: u64,
+
+        /// Epoch start
+        epoch_start: u64,
+
+        /// Epoch end
+        epoch_end: u64,
+    },
 
     /// Enter a season
-    EnterSeason,
+    EnterSeason {
+        /// Epoch start
+        epoch_start: u64,
+    },
 
     /// Lock a season
-    LockSeason,
+    LockSeason {
+        /// Epoch start
+        epoch_start: u64,
+    },
 
-    /// Submit scores for entries
-    SubmitScores,
+    /// Submit score for a single entry
+    SubmitScores {
+        /// Epoch start
+        epoch_start: u64,
+
+        /// Score
+        score: u64,
+    },
 
     /// Settle a season
-    SettleSeason,
+    SettleSeason {
+        /// Epoch start
+        epoch_start: u64,
+    },
 
     /// Claim reward
-    ClaimReward,
+    ClaimReward {
+        /// Epoch start
+        epoch_start: u64,
+    },
 }
 
 impl SenshiInstruction {
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
-        let (tag, _rest) = input
+        let (tag, rest) = input
             .split_first()
             .ok_or(ProgramError::InvalidInstructionData)?;
 
         Ok(match tag {
             0 => SenshiInstruction::InitializeConfig,
-            1 => SenshiInstruction::InitializeSeason,
-            2 => SenshiInstruction::EnterSeason,
-            3 => SenshiInstruction::LockSeason,
-            4 => SenshiInstruction::SubmitScores,
-            5 => SenshiInstruction::SettleSeason,
-            6 => SenshiInstruction::ClaimReward,
+            1 => {
+                // Parse instruction data: entry_fee (8) + epoch_start (8) + epoch_end (8) = 24
+                if rest.len() < 24 {
+                    return Err(ProgramError::InvalidInstructionData);
+                }
+
+                let entry_fee = u64::from_le_bytes(rest[0..8].try_into().unwrap());
+                let epoch_start = u64::from_le_bytes(rest[8..16].try_into().unwrap());
+                let epoch_end = u64::from_le_bytes(rest[16..24].try_into().unwrap());
+
+                SenshiInstruction::InitializeSeason {
+                    entry_fee,
+                    epoch_start,
+                    epoch_end,
+                }
+            }
+            2 => {
+                // Parse instruction data
+                if rest.len() < 8 {
+                    return Err(ProgramError::InvalidInstructionData);
+                }
+                let epoch_start = u64::from_le_bytes(rest[0..8].try_into().unwrap());
+
+                SenshiInstruction::EnterSeason { epoch_start }
+            }
+            3 => {
+                // Parse epoch_start from instruction data
+                if rest.len() < 8 {
+                    return Err(ProgramError::InvalidInstructionData);
+                }
+                let epoch_start = u64::from_le_bytes(rest[0..8].try_into().unwrap());
+
+                SenshiInstruction::LockSeason { epoch_start }
+            }
+            4 => {
+                if rest.len() < 16 {
+                    return Err(ProgramError::InvalidInstructionData);
+                }
+                let epoch_start = u64::from_le_bytes(rest[0..8].try_into().unwrap());
+                let score = u64::from_le_bytes(rest[8..16].try_into().unwrap());
+
+                SenshiInstruction::SubmitScores { epoch_start, score }
+            }
+            5 => {
+                // Parse epoch_start from instruction data
+                if rest.len() < 8 {
+                    return Err(ProgramError::InvalidInstructionData);
+                }
+                let epoch_start = u64::from_le_bytes(rest[0..8].try_into().unwrap());
+
+                SenshiInstruction::SettleSeason { epoch_start }
+            }
+            6 => {
+                // Parse epoch_start
+                if rest.len() < 8 {
+                    return Err(ProgramError::InvalidInstructionData);
+                }
+                let epoch_start = u64::from_le_bytes(rest[0..8].try_into().unwrap());
+
+                SenshiInstruction::ClaimReward { epoch_start }
+            }
             _ => return Err(ProgramError::InvalidInstructionData),
         })
     }

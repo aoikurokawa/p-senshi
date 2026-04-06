@@ -23,10 +23,11 @@ use crate::{
 /// 0. `[]` Season PDA.
 /// 1. `[writable]` Entry PDA.
 /// 2. `[signer]` Player.
-/// 3. `[writable]` Vault token account.
-/// 4. `[]` Vault authority PDA.
-/// 5. `[writable]` Player's JitoSOL token account.
-/// 6. `[]` Token program.
+/// 3. `[]` Vote account.
+/// 4. `[writable]` Vault token account.
+/// 5. `[]` Vault authority PDA.
+/// 6. `[writable]` Player's JitoSOL token account.
+/// 7. `[]` Token program.
 ///
 /// # Instruction Data (after tag byte)
 ///
@@ -36,9 +37,9 @@ use crate::{
 pub fn process_claim_reward(
     program_id: &Address,
     accounts: &[AccountView],
-    data: &[u8],
+    epoch_start: u64,
 ) -> Result<(), ProgramError> {
-    let [season_view, entry_view, player_view, vault_view, vault_authority_view, player_token_view, token_program_view] =
+    let [season_view, entry_view, player_view, vote_account_view, vault_view, vault_authority_view, player_token_view, token_program_view] =
         accounts
     else {
         return Err(ProgramError::NotEnoughAccountKeys);
@@ -54,14 +55,9 @@ pub fn process_claim_reward(
         return Err(ProgramError::IncorrectProgramId);
     }
 
-    // Parse epoch_start
-    if data.len() < 8 {
-        return Err(ProgramError::InvalidInstructionData);
-    }
-    let epoch_start = u64::from_le_bytes(data[0..8].try_into().unwrap());
-
     // Verify season PDA
-    let (season_pubkey, _, _) = Season::find_program_address(program_id, epoch_start);
+    let (season_pubkey, _, _) =
+        Season::find_program_address(program_id, vote_account_view.address(), epoch_start);
     if season_pubkey.ne(season_view.address()) {
         pinocchio_log::log!("Season account is not at the correct PDA");
         return Err(ProgramError::InvalidAccountData);
@@ -89,7 +85,7 @@ pub fn process_claim_reward(
 
     // Verify entry PDA
     let (entry_pubkey, _, _) =
-        Entry::find_program_address(program_id, epoch_start, player_view.address());
+        Entry::find_program_address(program_id, season_view.address(), player_view.address());
     if entry_pubkey.ne(entry_view.address()) {
         pinocchio_log::log!("Entry account is not at the correct PDA");
         return Err(ProgramError::InvalidAccountData);

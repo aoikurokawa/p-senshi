@@ -9,20 +9,11 @@ pub enum SenshiError {
     #[error("Season is not open for entries.")]
     SeasonNotOpen,
 
-    #[error("Roster size does not match the season's required roster size.")]
-    InvalidRosterSize,
-
-    #[error("Duplicate validator in roster.")]
-    DuplicateValidator,
-
     #[error("Invalid season status transition.")]
     InvalidTransition,
 
     #[error("Target epoch has not been reached yet.")]
     EpochNotReached,
-
-    #[error("Entries and scores length mismatch.")]
-    LengthMismatch,
 
     #[error("Season epoch has not ended yet.")]
     EpochNotEnded,

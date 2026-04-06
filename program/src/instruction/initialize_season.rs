@@ -15,25 +15,28 @@ use crate::{
 ///
 /// # Accounts
 ///
-/// 0. `[writable]` Season PDA (derived from `"season"` seed).
+/// 0. `[writable]` Season PDA (derived from `["season", validator, epoch]`).
 /// 1. `[signer, writable]` Payer — becomes the season authority.
-/// 2. `[]` System program.
+/// 2. `[]` Vote account.
+/// 3. `[]` Vault token account.
+/// 4. `[]` System program.
 ///
 /// # Instruction Data (after tag byte)
 ///
 /// | Offset | Size | Field        |
 /// |--------|------|--------------|
 /// | 0      | 8    | entry_fee    |
-/// | 8      | 1    | roster_size  |
-/// | 9      | 8    | epoch_start  |
-/// | 17     | 8    | epoch_end    |
-/// | 25     | 32   | vault        |
+/// | 8      | 8    | epoch_start  |
+/// | 16     | 8    | epoch_end    |
 pub fn process_initialize_season(
     program_id: &Address,
     accounts: &[AccountView],
-    data: &[u8],
+    entry_fee: u64,
+    epoch_start: u64,
+    epoch_end: u64,
 ) -> Result<(), ProgramError> {
-    let [season_view, payer_view, system_program_view] = accounts else {
+    let [season_view, payer_view, vote_account_view, vault_view, system_program_view] = accounts
+    else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
@@ -47,24 +50,13 @@ pub fn process_initialize_season(
         return Err(ProgramError::IncorrectProgramId);
     }
 
-    // Parse instruction data: entry_fee (8) + roster_size (1) + epoch_start (8) + epoch_end (8) + vault (32) = 57
-    if data.len() < 57 {
-        return Err(ProgramError::InvalidInstructionData);
-    }
-
-    let entry_fee = u64::from_le_bytes(data[0..8].try_into().unwrap());
-    let roster_size = data[8];
-    let epoch_start = u64::from_le_bytes(data[9..17].try_into().unwrap());
-    let epoch_end = u64::from_le_bytes(data[17..25].try_into().unwrap());
-    let vault: Address = data[25..57].try_into().unwrap();
-
     let rent = Rent::get()?;
     let space = 8usize
         .checked_add(Season::LEN)
         .ok_or(SenshiError::ArithmeticError)?;
 
     let (season_pubkey, season_bump, mut season_seeds) =
-        Season::find_program_address(program_id, epoch_start);
+        Season::find_program_address(program_id, vote_account_view.address(), epoch_start);
     season_seeds.push(vec![season_bump]);
     if season_pubkey.ne(season_view.address()) {
         pinocchio_log::log!("Season account is not at the correct PDA");
@@ -93,15 +85,14 @@ pub fn process_initialize_season(
         Season::load_mut_unchecked(&mut season_data[8..])?
     };
 
+    season.authority = payer_view.address().clone();
+    season.vault = vault_view.address().clone();
     season.entry_fee = entry_fee;
-    season.roster_size = roster_size;
     season.status = SeasonStatus::Open as u8;
     season.epoch_start = epoch_start;
     season.epoch_end = epoch_end;
     season.total_entries = 0;
-    season.vault = vault;
     season.prize_pool = 0;
-    season.authority = payer_view.address().clone();
     season.bump = season_bump;
     season.reserved = [0u8; 128];
 
