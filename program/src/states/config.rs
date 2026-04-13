@@ -24,6 +24,26 @@ impl Config {
     ///
     /// The caller must ensure that `bytes` contains a valid representation of `Config`.
     #[inline(always)]
+    pub unsafe fn load_unchecked(bytes: &[u8]) -> Result<&Self, ProgramError> {
+        if bytes.len()
+            != Self::LEN
+                .checked_sub(8)
+                .ok_or(SenshiError::ArithmeticError)?
+        {
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        Ok(&*(bytes.as_ptr() as *mut Self))
+    }
+
+    /// Return a mutable `Config` reference from the given bytes.
+    ///
+    /// This function does not check if the data is initialized.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `bytes` contains a valid representation of `Config`.
+    #[inline(always)]
     pub unsafe fn load_mut_unchecked(bytes: &mut [u8]) -> Result<&mut Self, ProgramError> {
         if bytes.len()
             != Self::LEN

@@ -6,17 +6,17 @@ use pinocchio::{
 
 use crate::{
     error::SenshiError,
-    state::season::{Season, SeasonStatus},
+    states::pool::{Pool, PoolStatus},
 };
 
-/// Settles the season after scoring is complete and the epoch window has ended.
+/// Settles the pool after scoring is complete and the epoch window has ended.
 ///
 /// Updates the prize pool to the current vault balance and transitions the
-/// season to `Settled`, enabling reward claims.
+/// pool to `Settled`, enabling reward claims.
 ///
 /// # Accounts
 ///
-/// 0. `[writable]` Season PDA.
+/// 0. `[writable]` Pool PDA.
 /// 1. `[signer]` Authority.
 /// 2. `[]` Vote account.
 /// 3. `[]` Vault token account.
@@ -26,12 +26,12 @@ use crate::{
 /// | Offset | Size | Field       |
 /// |--------|------|-------------|
 /// | 0      | 8    | epoch_start |
-pub fn process_settle_season(
+pub fn process_settle_pool(
     program_id: &Address,
     accounts: &[AccountView],
     epoch_start: u64,
 ) -> Result<(), ProgramError> {
-    let [season_view, authority_view, vote_account_view, vault_view] = accounts else {
+    let [pool_view, authority_view, vote_account_view, vault_view] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
@@ -40,44 +40,44 @@ pub fn process_settle_season(
         return Err(ProgramError::MissingRequiredSignature);
     }
 
-    // Verify season PDA
-    let (season_pubkey, _, _) =
-        Season::find_program_address(program_id, vote_account_view.address(), epoch_start);
-    if season_pubkey.ne(season_view.address()) {
-        pinocchio_log::log!("Season account is not at the correct PDA");
+    // Verify pool PDA
+    let (pool_pubkey, _, _) =
+        Pool::find_program_address(program_id, vote_account_view.address(), epoch_start);
+    if pool_pubkey.ne(pool_view.address()) {
+        pinocchio_log::log!("Pool account is not at the correct PDA");
         return Err(ProgramError::InvalidAccountData);
     }
 
-    // Load season
-    let season_data = unsafe { season_view.borrow_unchecked_mut() };
-    if season_data[0..8] != *Season::DISCRIMINATOR {
-        pinocchio_log::log!("Invalid season discriminator");
+    // Load pool
+    let pool_data = unsafe { pool_view.borrow_unchecked_mut() };
+    if pool_data[0..8] != *Pool::DISCRIMINATOR {
+        pinocchio_log::log!("Invalid pool discriminator");
         return Err(ProgramError::InvalidAccountData);
     }
-    let season = unsafe { Season::load_mut_unchecked(&mut season_data[8..])? };
+    let pool = unsafe { Pool::load_mut_unchecked(&mut pool_data[8..])? };
 
     // Verify authority
-    if authority_view.address().ne(&season.authority) {
-        pinocchio_log::log!("Authority does not match season authority");
+    if authority_view.address().ne(&pool.authority) {
+        pinocchio_log::log!("Authority does not match pool authority");
         return Err(ProgramError::MissingRequiredSignature);
     }
 
-    // Verify vault matches season
-    if vault_view.address().ne(&season.vault) {
-        pinocchio_log::log!("Vault does not match season vault");
+    // Verify vault matches pool
+    if vault_view.address().ne(&pool.vault) {
+        pinocchio_log::log!("Vault does not match pool vault");
         return Err(ProgramError::InvalidAccountData);
     }
 
-    // Season must be Scoring
-    if season.status != SeasonStatus::Scoring as u8 {
-        pinocchio_log::log!("Season is not in Scoring status");
+    // Pool must be Scoring
+    if pool.status != PoolStatus::Scoring as u8 {
+        pinocchio_log::log!("Pool is not in Scoring status");
         return Err(SenshiError::InvalidTransition.into());
     }
 
     // Current epoch must be past epoch_end
     let clock = Clock::get()?;
-    if clock.epoch <= season.epoch_end {
-        pinocchio_log::log!("Season epoch has not ended");
+    if clock.epoch <= pool.epoch_end {
+        pinocchio_log::log!("Pool epoch has not ended");
         return Err(SenshiError::EpochNotEnded.into());
     }
 
@@ -85,9 +85,9 @@ pub fn process_settle_season(
     let vault_data = vault_view.try_borrow()?;
     // SPL Token account: amount is at offset 64, 8 bytes little-endian
     let vault_amount = u64::from_le_bytes(vault_data[64..72].try_into().unwrap());
-    season.prize_pool = vault_amount;
+    pool.prize_pool = vault_amount;
 
-    season.status = SeasonStatus::Settled as u8;
+    pool.status = PoolStatus::Settled as u8;
 
     Ok(())
 }

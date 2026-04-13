@@ -6,19 +6,19 @@ pub enum SenshiError {
     #[error("Encountered an arithmetic under/overflow error.")]
     ArithmeticError,
 
-    #[error("Season is not open for entries.")]
-    SeasonNotOpen,
+    #[error("Pool is not open for entries.")]
+    PoolNotOpen,
 
-    #[error("Invalid season status transition.")]
+    #[error("Invalid pool status transition.")]
     InvalidTransition,
 
     #[error("Target epoch has not been reached yet.")]
     EpochNotReached,
 
-    #[error("Season epoch has not ended yet.")]
+    #[error("Pool epoch has not ended yet.")]
     EpochNotEnded,
 
-    #[error("Season is not settled.")]
+    #[error("Pool is not settled.")]
     NotSettled,
 
     #[error("Reward has already been claimed.")]
