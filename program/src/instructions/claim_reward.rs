@@ -9,18 +9,18 @@ use crate::{
     error::SenshiError,
     states::{
         entry::Entry,
-        season::{Season, SeasonStatus},
+        pool::{Pool, PoolStatus},
     },
 };
 
-/// Claims a player's reward after the season has been settled.
+/// Claims a player's reward after the pool has been settled.
 ///
 /// Transfers the reward amount from the vault to the player's token account
 /// using the vault authority PDA as signer.
 ///
 /// # Accounts
 ///
-/// 0. `[]` Season PDA.
+/// 0. `[]` Pool PDA.
 /// 1. `[writable]` Entry PDA.
 /// 2. `[signer]` Player.
 /// 3. `[]` Vote account.
@@ -39,7 +39,7 @@ pub fn process_claim_reward(
     accounts: &[AccountView],
     epoch_start: u64,
 ) -> Result<(), ProgramError> {
-    let [season_view, entry_view, player_view, vote_account_view, vault_view, vault_authority_view, player_token_view, token_program_view] =
+    let [pool_view, entry_view, player_view, vote_account_view, vault_view, vault_authority_view, player_token_view, token_program_view] =
         accounts
     else {
         return Err(ProgramError::NotEnoughAccountKeys);
@@ -55,37 +55,37 @@ pub fn process_claim_reward(
         return Err(ProgramError::IncorrectProgramId);
     }
 
-    // Verify season PDA
-    let (season_pubkey, _, _) =
-        Season::find_program_address(program_id, vote_account_view.address(), epoch_start);
-    if season_pubkey.ne(season_view.address()) {
-        pinocchio_log::log!("Season account is not at the correct PDA");
+    // Verify pool PDA
+    let (pool_pubkey, _, _) =
+        Pool::find_program_address(program_id, vote_account_view.address(), epoch_start);
+    if pool_pubkey.ne(pool_view.address()) {
+        pinocchio_log::log!("Pool account is not at the correct PDA");
         return Err(ProgramError::InvalidAccountData);
     }
 
-    // Load season (read-only)
-    let season_data = unsafe { season_view.borrow_unchecked_mut() };
-    if season_data[0..8] != *Season::DISCRIMINATOR {
-        pinocchio_log::log!("Invalid season discriminator");
+    // Load pool (read-only)
+    let pool_data = unsafe { pool_view.borrow_unchecked_mut() };
+    if pool_data[0..8] != *Pool::DISCRIMINATOR {
+        pinocchio_log::log!("Invalid pool discriminator");
         return Err(ProgramError::InvalidAccountData);
     }
-    let season = unsafe { Season::load_mut_unchecked(&mut season_data[8..])? };
+    let pool = unsafe { Pool::load_mut_unchecked(&mut pool_data[8..])? };
 
-    // Season must be Settled
-    if season.status != SeasonStatus::Settled as u8 {
-        pinocchio_log::log!("Season is not settled");
+    // Pool must be Settled
+    if pool.status != PoolStatus::Settled as u8 {
+        pinocchio_log::log!("Pool is not settled");
         return Err(SenshiError::NotSettled.into());
     }
 
-    // Verify vault matches season
-    if vault_view.address().ne(&season.vault) {
-        pinocchio_log::log!("Vault does not match season vault");
+    // Verify vault matches pool
+    if vault_view.address().ne(&pool.vault) {
+        pinocchio_log::log!("Vault does not match pool vault");
         return Err(ProgramError::InvalidAccountData);
     }
 
     // Verify entry PDA
     let (entry_pubkey, _, _) =
-        Entry::find_program_address(program_id, season_view.address(), player_view.address());
+        Entry::find_program_address(program_id, pool_view.address(), player_view.address());
     if entry_pubkey.ne(entry_view.address()) {
         pinocchio_log::log!("Entry account is not at the correct PDA");
         return Err(ProgramError::InvalidAccountData);
@@ -115,11 +115,11 @@ pub fn process_claim_reward(
     entry.claimed = 1;
 
     // Transfer reward from vault to player's token account using vault authority PDA
-    // Vault authority PDA: ["vault", epoch_start, season_bump]
+    // Vault authority PDA: ["vault", epoch_start, pool_bump]
     let vault_seeds: Vec<Vec<u8>> = vec![
         b"vault".to_vec(),
         epoch_start.to_le_bytes().to_vec(),
-        vec![season.bump],
+        vec![pool.bump],
     ];
     let seeds: Vec<Seed> = vault_seeds
         .iter()

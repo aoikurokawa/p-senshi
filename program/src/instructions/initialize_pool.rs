@@ -10,19 +10,20 @@ use crate::{
     error::SenshiError,
     states::{
         config::Config,
-        season::{Season, SeasonStatus},
+        pool::{Pool, PoolStatus},
     },
 };
 
-/// Creates the global [`Season`] PDA and populates it with the provided parameters.
+/// Creates the [`Pool`] PDA and populates it with the provided parameters.
 ///
 /// # Accounts
 ///
-/// 0. `[writable]` Season PDA (derived from `["season", validator, epoch]`).
-/// 1. `[signer, writable]` Payer — becomes the season authority.
-/// 2. `[]` Vote account.
-/// 3. `[]` Vault token account.
-/// 4. `[]` System program.
+/// 0. `[]` Config PDA.
+/// 1. `[writable]` Pool PDA (derived from `["pool", vote_account, epoch]`).
+/// 2. `[signer, writable]` Payer — becomes the pool authority.
+/// 3. `[]` Vote account.
+/// 4. `[]` Vault token account.
+/// 5. `[]` System program.
 ///
 /// # Instruction Data (after tag byte)
 ///
@@ -31,14 +32,14 @@ use crate::{
 /// | 0      | 8    | entry_fee    |
 /// | 8      | 8    | epoch_start  |
 /// | 16     | 8    | epoch_end    |
-pub fn process_initialize_season(
+pub fn process_initialize_pool(
     program_id: &Address,
     accounts: &[AccountView],
     entry_fee: u64,
     epoch_start: u64,
     epoch_end: u64,
 ) -> Result<(), ProgramError> {
-    let [config_view, season_view, payer_view, vote_account_view, vault_view, system_program_view] =
+    let [config_view, pool_view, payer_view, vote_account_view, vault_view, system_program_view] =
         accounts
     else {
         return Err(ProgramError::NotEnoughAccountKeys);
@@ -75,49 +76,49 @@ pub fn process_initialize_season(
 
     let rent = Rent::get()?;
     let space = 8usize
-        .checked_add(Season::LEN)
+        .checked_add(Pool::LEN)
         .ok_or(SenshiError::ArithmeticError)?;
 
-    let (season_pubkey, season_bump, mut season_seeds) =
-        Season::find_program_address(program_id, vote_account_view.address(), epoch_start);
-    season_seeds.push(vec![season_bump]);
-    if season_pubkey.ne(season_view.address()) {
-        pinocchio_log::log!("Season account is not at the correct PDA");
+    let (pool_pubkey, pool_bump, mut pool_seeds) =
+        Pool::find_program_address(program_id, vote_account_view.address(), epoch_start);
+    pool_seeds.push(vec![pool_bump]);
+    if pool_pubkey.ne(pool_view.address()) {
+        pinocchio_log::log!("Pool account is not at the correct PDA");
         return Err(ProgramError::InvalidAccountData);
     }
 
-    let seeds: Vec<Seed> = season_seeds
+    let seeds: Vec<Seed> = pool_seeds
         .iter()
         .map(|seed| Seed::from(seed.as_slice()))
         .collect();
     let signers = [Signer::from(seeds.as_slice())];
 
-    pinocchio_log::log!("Initializing Season at address");
+    pinocchio_log::log!("Initializing Pool at address");
     CreateAccount {
         from: payer_view,
-        to: season_view,
+        to: pool_view,
         lamports: rent.minimum_balance_unchecked(space),
         space: space as u64,
         owner: program_id,
     }
     .invoke_signed(&signers)?;
 
-    let season = unsafe {
-        let season_data = season_view.borrow_unchecked_mut();
-        season_data[0..8].copy_from_slice(Season::DISCRIMINATOR);
-        Season::load_mut_unchecked(&mut season_data[8..])?
+    let pool = unsafe {
+        let pool_data = pool_view.borrow_unchecked_mut();
+        pool_data[0..8].copy_from_slice(Pool::DISCRIMINATOR);
+        Pool::load_mut_unchecked(&mut pool_data[8..])?
     };
 
-    season.authority = payer_view.address().clone();
-    season.vault = vault_view.address().clone();
-    season.entry_fee = entry_fee;
-    season.status = SeasonStatus::Open as u8;
-    season.epoch_start = epoch_start;
-    season.epoch_end = epoch_end;
-    season.total_entries = 0;
-    season.prize_pool = 0;
-    season.bump = season_bump;
-    season.reserved = [0u8; 128];
+    pool.authority = payer_view.address().clone();
+    pool.vault = vault_view.address().clone();
+    pool.entry_fee = entry_fee;
+    pool.status = PoolStatus::Open as u8;
+    pool.epoch_start = epoch_start;
+    pool.epoch_end = epoch_end;
+    pool.total_entries = 0;
+    pool.prize_pool = 0;
+    pool.bump = pool_bump;
+    pool.reserved = [0u8; 128];
 
     Ok(())
 }

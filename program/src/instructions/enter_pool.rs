@@ -11,24 +11,24 @@ use crate::{
     error::SenshiError,
     states::{
         entry::Entry,
-        season::{Season, SeasonStatus},
+        pool::{Pool, PoolStatus},
     },
 };
 
-/// Enters a player into an open per-validator season.
+/// Enters a player into an open per-validator pool.
 ///
 /// Creates the [`Entry`] PDA, transfers the entry fee from the player's token
-/// account to the season vault, and increments the season's `total_entries`
+/// account to the pool vault, and increments the pool's `total_entries`
 /// and `prize_pool`.
 ///
 /// # Accounts
 ///
-/// 0. `[writable]` Season PDA.
-/// 1. `[writable]` Entry PDA (derived from `["entry", season, player]`).
+/// 0. `[writable]` Pool PDA.
+/// 1. `[writable]` Entry PDA (derived from `["entry", pool, player]`).
 /// 2. `[signer, writable]` Player.
 /// 3. `[]` Vote account.
 /// 4. `[writable]` Player's JitoSOL token account.
-/// 5. `[writable]` Season vault token account.
+/// 5. `[writable]` Pool vault token account.
 /// 6. `[]` Token program.
 /// 7. `[]` System program.
 ///
@@ -37,12 +37,12 @@ use crate::{
 /// | Offset | Size | Field       |
 /// |--------|------|-------------|
 /// | 0      | 8    | epoch_start |
-pub fn process_enter_season(
+pub fn process_enter_pool(
     program_id: &Address,
     accounts: &[AccountView],
     epoch_start: u64,
 ) -> Result<(), ProgramError> {
-    let [season_view, entry_view, player_view, vote_account_view, player_token_view, vault_view, token_program_view, system_program_view] =
+    let [pool_view, entry_view, player_view, vote_account_view, player_token_view, vault_view, token_program_view, system_program_view] =
         accounts
     else {
         return Err(ProgramError::NotEnoughAccountKeys);
@@ -63,31 +63,31 @@ pub fn process_enter_season(
         return Err(ProgramError::IncorrectProgramId);
     }
 
-    // Load season
-    let season_data = unsafe { season_view.borrow_unchecked_mut() };
-    if season_data[0..8] != *Season::DISCRIMINATOR {
-        pinocchio_log::log!("Invalid season discriminator");
+    // Load pool
+    let pool_data = unsafe { pool_view.borrow_unchecked_mut() };
+    if pool_data[0..8] != *Pool::DISCRIMINATOR {
+        pinocchio_log::log!("Invalid pool discriminator");
         return Err(ProgramError::InvalidAccountData);
     }
-    let season = unsafe { Season::load_mut_unchecked(&mut season_data[8..])? };
+    let pool = unsafe { Pool::load_mut_unchecked(&mut pool_data[8..])? };
 
-    // Verify season PDA
-    let (season_pubkey, _, _) =
-        Season::find_program_address(program_id, vote_account_view.address(), epoch_start);
-    if season_pubkey.ne(season_view.address()) {
-        pinocchio_log::log!("Season account is not at the correct PDA");
+    // Verify pool PDA
+    let (pool_pubkey, _, _) =
+        Pool::find_program_address(program_id, vote_account_view.address(), epoch_start);
+    if pool_pubkey.ne(pool_view.address()) {
+        pinocchio_log::log!("Pool account is not at the correct PDA");
         return Err(ProgramError::InvalidAccountData);
     }
 
-    // Season must be open
-    if season.status != SeasonStatus::Open as u8 {
-        pinocchio_log::log!("Season is not open");
-        return Err(SenshiError::SeasonNotOpen.into());
+    // Pool must be open
+    if pool.status != PoolStatus::Open as u8 {
+        pinocchio_log::log!("Pool is not open");
+        return Err(SenshiError::PoolNotOpen.into());
     }
 
-    // Verify vault matches season
-    if vault_view.address().ne(&season.vault) {
-        pinocchio_log::log!("Vault does not match season vault");
+    // Verify vault matches pool
+    if vault_view.address().ne(&pool.vault) {
+        pinocchio_log::log!("Vault does not match pool vault");
         return Err(ProgramError::InvalidAccountData);
     }
 
@@ -96,13 +96,13 @@ pub fn process_enter_season(
         from: player_token_view,
         to: vault_view,
         authority: player_view,
-        amount: season.entry_fee,
+        amount: pool.entry_fee,
     }
     .invoke()?;
 
     // Create Entry PDA
     let (entry_pubkey, entry_bump, mut entry_seeds) =
-        Entry::find_program_address(program_id, season_view.address(), player_view.address());
+        Entry::find_program_address(program_id, pool_view.address(), player_view.address());
     entry_seeds.push(vec![entry_bump]);
     if entry_pubkey.ne(entry_view.address()) {
         pinocchio_log::log!("Entry account is not at the correct PDA");
@@ -146,14 +146,14 @@ pub fn process_enter_season(
     entry.bump = entry_bump;
     entry.reserved = [0u8; 64];
 
-    // Update season
-    season.total_entries = season
+    // Update pool
+    pool.total_entries = pool
         .total_entries
         .checked_add(1)
         .ok_or(SenshiError::ArithmeticError)?;
-    season.prize_pool = season
+    pool.prize_pool = pool
         .prize_pool
-        .checked_add(season.entry_fee)
+        .checked_add(pool.entry_fee)
         .ok_or(SenshiError::ArithmeticError)?;
 
     Ok(())

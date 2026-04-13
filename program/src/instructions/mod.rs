@@ -1,11 +1,11 @@
 use pinocchio::error::ProgramError;
 
 pub mod claim_reward;
-pub mod enter_season;
+pub mod enter_pool;
 pub mod initialize_config;
-pub mod initialize_season;
-pub mod lock_season;
-pub mod settle_season;
+pub mod initialize_pool;
+pub mod lock_pool;
+pub mod settle_pool;
 pub mod submit_scores;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -14,8 +14,8 @@ pub enum SenshiInstruction {
     /// Initialize config
     InitializeConfig,
 
-    /// Initialize season
-    InitializeSeason {
+    /// Initialize pool
+    InitializePool {
         /// Entry fee
         entry_fee: u64,
 
@@ -26,14 +26,14 @@ pub enum SenshiInstruction {
         epoch_end: u64,
     },
 
-    /// Enter a season
-    EnterSeason {
+    /// Enter a pool
+    EnterPool {
         /// Epoch start
         epoch_start: u64,
     },
 
-    /// Lock a season
-    LockSeason {
+    /// Lock a pool
+    LockPool {
         /// Epoch start
         epoch_start: u64,
     },
@@ -47,8 +47,8 @@ pub enum SenshiInstruction {
         score: u64,
     },
 
-    /// Settle a season
-    SettleSeason {
+    /// Settle a pool
+    SettlePool {
         /// Epoch start
         epoch_start: u64,
     },
@@ -78,7 +78,7 @@ impl SenshiInstruction {
                 let epoch_start = u64::from_le_bytes(rest[8..16].try_into().unwrap());
                 let epoch_end = u64::from_le_bytes(rest[16..24].try_into().unwrap());
 
-                SenshiInstruction::InitializeSeason {
+                SenshiInstruction::InitializePool {
                     entry_fee,
                     epoch_start,
                     epoch_end,
@@ -91,7 +91,7 @@ impl SenshiInstruction {
                 }
                 let epoch_start = u64::from_le_bytes(rest[0..8].try_into().unwrap());
 
-                SenshiInstruction::EnterSeason { epoch_start }
+                SenshiInstruction::EnterPool { epoch_start }
             }
             3 => {
                 // Parse epoch_start from instruction data
@@ -100,7 +100,7 @@ impl SenshiInstruction {
                 }
                 let epoch_start = u64::from_le_bytes(rest[0..8].try_into().unwrap());
 
-                SenshiInstruction::LockSeason { epoch_start }
+                SenshiInstruction::LockPool { epoch_start }
             }
             4 => {
                 if rest.len() < 16 {
@@ -118,7 +118,7 @@ impl SenshiInstruction {
                 }
                 let epoch_start = u64::from_le_bytes(rest[0..8].try_into().unwrap());
 
-                SenshiInstruction::SettleSeason { epoch_start }
+                SenshiInstruction::SettlePool { epoch_start }
             }
             6 => {
                 // Parse epoch_start
