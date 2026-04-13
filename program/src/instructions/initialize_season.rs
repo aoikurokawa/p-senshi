@@ -8,7 +8,10 @@ use pinocchio_system::instructions::CreateAccount;
 
 use crate::{
     error::SenshiError,
-    states::season::{Season, SeasonStatus},
+    states::{
+        config::Config,
+        season::{Season, SeasonStatus},
+    },
 };
 
 /// Creates the global [`Season`] PDA and populates it with the provided parameters.
@@ -35,14 +38,34 @@ pub fn process_initialize_season(
     epoch_start: u64,
     epoch_end: u64,
 ) -> Result<(), ProgramError> {
-    let [season_view, payer_view, vote_account_view, vault_view, system_program_view] = accounts
+    let [config_view, season_view, payer_view, vote_account_view, vault_view, system_program_view] =
+        accounts
     else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
+    let (config_pubkey, _, _) = Config::find_program_address(program_id);
+    if config_pubkey.ne(config_view.address()) {
+        pinocchio_log::log!("Config account is not at the correct PDA");
+        return Err(ProgramError::InvalidAccountData);
+    }
+
+    // Load config
+    let config_data = unsafe { config_view.borrow_unchecked() };
+    if config_data[0..8] != *Config::DISCRIMINATOR {
+        pinocchio_log::log!("Invalid config discriminator");
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let config = unsafe { Config::load_unchecked(&config_data[8..])? };
+
     if !payer_view.is_signer() {
         pinocchio_log::log!("payer_view is not a signer");
         return Err(ProgramError::MissingRequiredSignature);
+    }
+
+    if config.authority.ne(payer_view.address()) {
+        pinocchio_log::log!("Invalid payer");
+        return Err(ProgramError::InvalidAccountData);
     }
 
     if system_program_view.address().ne(&pinocchio_system::id()) {
