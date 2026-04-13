@@ -6,7 +6,7 @@ use pinocchio::{
 };
 use pinocchio_system::instructions::CreateAccount;
 
-use crate::{error::SenshiError, state::config::Config};
+use crate::{error::SenshiError, states::config::Config};
 
 pub fn process_initialize_config(
     program_id: &Address,

@@ -1,6 +1,6 @@
 use pinocchio::{entrypoint, error::ProgramError, AccountView, Address, ProgramResult};
 
-use crate::instruction::{
+use crate::instructions::{
     claim_reward::process_claim_reward, enter_season::process_enter_season,
     initialize_config::process_initialize_config, initialize_season::process_initialize_season,
     lock_season::process_lock_season, settle_season::process_settle_season,
@@ -8,8 +8,8 @@ use crate::instruction::{
 };
 
 pub mod error;
-pub mod instruction;
-pub mod state;
+pub mod instructions;
+pub mod states;
 
 entrypoint!(process_instruction);
 

@@ -8,7 +8,7 @@ use pinocchio_system::instructions::CreateAccount;
 
 use crate::{
     error::SenshiError,
-    state::season::{Season, SeasonStatus},
+    states::season::{Season, SeasonStatus},
 };
 
 /// Creates the global [`Season`] PDA and populates it with the provided parameters.

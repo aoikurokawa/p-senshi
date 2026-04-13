@@ -1,37 +1,38 @@
-use pinocchio::{
-    error::ProgramError,
-    sysvars::{clock::Clock, Sysvar},
-    AccountView, Address,
-};
+use pinocchio::{error::ProgramError, AccountView, Address};
 
 use crate::{
     error::SenshiError,
-    state::season::{Season, SeasonStatus},
+    states::{
+        entry::Entry,
+        season::{Season, SeasonStatus},
+    },
 };
 
-/// Settles the season after scoring is complete and the epoch window has ended.
+/// Submits a score for a single entry in a locked or scoring season.
 ///
-/// Updates the prize pool to the current vault balance and transitions the
-/// season to `Settled`, enabling reward claims.
+/// The authority calls this once per entry. The season transitions
+/// to `Scoring` on the first call.
 ///
 /// # Accounts
 ///
 /// 0. `[writable]` Season PDA.
 /// 1. `[signer]` Authority.
 /// 2. `[]` Vote account.
-/// 3. `[]` Vault token account.
+/// 3. `[writable]` Entry PDA.
 ///
 /// # Instruction Data (after tag byte)
 ///
 /// | Offset | Size | Field       |
 /// |--------|------|-------------|
 /// | 0      | 8    | epoch_start |
-pub fn process_settle_season(
+/// | 8      | 8    | score       |
+pub fn process_submit_scores(
     program_id: &Address,
     accounts: &[AccountView],
     epoch_start: u64,
+    score: u64,
 ) -> Result<(), ProgramError> {
-    let [season_view, authority_view, vote_account_view, vault_view] = accounts else {
+    let [season_view, authority_view, vote_account_view, entry_view] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
@@ -62,32 +63,25 @@ pub fn process_settle_season(
         return Err(ProgramError::MissingRequiredSignature);
     }
 
-    // Verify vault matches season
-    if vault_view.address().ne(&season.vault) {
-        pinocchio_log::log!("Vault does not match season vault");
-        return Err(ProgramError::InvalidAccountData);
-    }
-
-    // Season must be Scoring
-    if season.status != SeasonStatus::Scoring as u8 {
-        pinocchio_log::log!("Season is not in Scoring status");
+    // Season must be Locked or Scoring
+    if season.status != SeasonStatus::Locked as u8 && season.status != SeasonStatus::Scoring as u8 {
+        pinocchio_log::log!("Season is not in Locked or Scoring status");
         return Err(SenshiError::InvalidTransition.into());
     }
 
-    // Current epoch must be past epoch_end
-    let clock = Clock::get()?;
-    if clock.epoch <= season.epoch_end {
-        pinocchio_log::log!("Season epoch has not ended");
-        return Err(SenshiError::EpochNotEnded.into());
+    // Transition to Scoring
+    season.status = SeasonStatus::Scoring as u8;
+
+    // Load entry and write score
+    let entry_data = unsafe { entry_view.borrow_unchecked_mut() };
+    if entry_data[0..8] != *Entry::DISCRIMINATOR {
+        pinocchio_log::log!("Invalid entry discriminator");
+        return Err(ProgramError::InvalidAccountData);
     }
+    let entry = unsafe { Entry::load_mut_unchecked(&mut entry_data[8..])? };
 
-    // Update prize pool from vault balance (includes accrued yield)
-    let vault_data = vault_view.try_borrow()?;
-    // SPL Token account: amount is at offset 64, 8 bytes little-endian
-    let vault_amount = u64::from_le_bytes(vault_data[64..72].try_into().unwrap());
-    season.prize_pool = vault_amount;
-
-    season.status = SeasonStatus::Settled as u8;
+    entry.has_score = 1;
+    entry.score = score;
 
     Ok(())
 }

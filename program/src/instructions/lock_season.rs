@@ -6,7 +6,7 @@ use pinocchio::{
 
 use crate::{
     error::SenshiError,
-    state::season::{Season, SeasonStatus},
+    states::season::{Season, SeasonStatus},
 };
 
 /// Locks the season once the target epoch has begun, preventing new entries.

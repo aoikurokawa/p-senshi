@@ -9,7 +9,7 @@ use pinocchio_token::instructions::Transfer;
 
 use crate::{
     error::SenshiError,
-    state::{
+    states::{
         entry::Entry,
         season::{Season, SeasonStatus},
     },
