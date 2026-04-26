@@ -13,7 +13,7 @@ pub mod states;
 
 entrypoint!(process_instruction);
 
-pinocchio_pubkey::declare_id!("3vgVYgJxqFKF2cFYHV4GPBUnLynCJYmKizq9DRmZmTUf");
+pinocchio_pubkey::declare_id!("SenPmWgTAKKhCxCAtKJLkV5yz7YW8VKQgUpTE5rEFYb");
 
 fn process_instruction(
     program_id: &Address,
